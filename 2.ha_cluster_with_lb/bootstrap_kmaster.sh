@@ -25,7 +25,7 @@ sudo kubeadm config images pull >/dev/null 2>&1
 
 if [ "$(hostname)" == "master1.example.com" ] ; then 
   echo "[TASK 14] Initialize Kubernetes Cluster"
-  sudo kubeadm init --control-plane-endpoint="k8s-vip:10443" --upload-certs --apiserver-advertise-address=$IP --pod-network-cidr=192.168.0.0/16
+  sudo kubeadm init --control-plane-endpoint="k8s-vip:10443" --upload-certs --apiserver-advertise-address=$IP --pod-network-cidr=192.168.0.0/16 >/dev/null 2>&1
 
   echo "[TASK 15] Deploy Calico network"
   sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf create -f https://docs.projectcalico.org/manifests/calico.yaml >/dev/null 2>&1
@@ -55,6 +55,6 @@ else
   echo "Skip to --> [TASK 20] Join node to Kubernetes Cluster"
   sudo yum install -y sshpass >/dev/null 2>&1
   sudo sshpass -p "kubeadmin" scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no master1.example.com:/controlplane.sh /controlplane.sh 2>/dev/null
-  sed -i s/$/$(hostname -I | cut -d" " -f 2)/ /controlplane.sh
-  sudo bash /controlplane.sh
+  sed -i s/$/$(hostname -I | cut -d" " -f 2)/ /controlplane.sh >/dev/null 2>&1
+  sudo bash /controlplane.sh >/dev/null 2>&1
 fi
