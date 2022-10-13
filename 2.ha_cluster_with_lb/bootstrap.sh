@@ -16,13 +16,12 @@ sudo yum -y install ufw nc net-tools vim sshpass >/dev/null 2>&1
 
 # Optional
 
-# sudo setsebool -P haproxy_connect_any 1 
+# sudo setsebool -P haproxy_connect_any 1
 
 # Selinux settings
-sudo sed -i 's/SELINUX=enforcing/SELINUX=permissive/g' /etc/selinux/config 
+sudo sed -i 's/SELINUX=enforcing/SELINUX=permissive/g' /etc/selinux/config
 sudo setenforce 0
 sudo getenforce >/dev/null 2>&1
-
 
 echo "[TASK 2] Disable and turn off SWAP"
 # disable swap
@@ -63,11 +62,10 @@ sudo yum install -y containerd.io >/dev/null 2>&1
 # sudo yum install -y docker-compose-plugin >/dev/null
 
 sudo mkdir -p /etc/containerd
-sudo containerd config default > /etc/containerd/config.toml
+sudo containerd config default >/etc/containerd/config.toml
 sudo sed -i 's/SystemdCgroup \= true/SystemdCgroup \= false/g' /etc/containerd/config.toml >/dev/null 2>&1
 sudo systemctl restart containerd >/dev/null 2>&1
 sudo systemctl enable containerd >/dev/null 2>&1
-
 
 echo "[TASK 6] Add apt repo for kubernetes"
 cat <<EOF | sudo tee /etc/yum.repos.d/kubernetes.repo >/dev/null 2>&1
@@ -91,7 +89,7 @@ sudo systemctl reload sshd >/dev/null 2>&1
 
 echo "[TASK 9] Set root password"
 sudo echo -e "kubeadmin\nkubeadmin" | passwd root >/dev/null 2>&1
-sudo echo "export TERM=xterm" >> /etc/bash.bashrc >/dev/null 2>&1
+sudo echo "export TERM=xterm" >>/etc/bash.bashrc >/dev/null 2>&1
 
 echo "[TASK 10] Update /etc/hosts file"
 sudo cat | sudo tee -a /etc/hosts >/dev/null 2>&1 <<EOF

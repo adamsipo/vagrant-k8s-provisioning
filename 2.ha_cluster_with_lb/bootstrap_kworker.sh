@@ -10,7 +10,6 @@
 # sudo firewall-cmd --zone=public --add-port=10250/tcp --permanent >/dev/null 2>&1
 # sudo firewall-cmd --zone=public --add-port=30000-32767/tcp --permanent >/dev/null 2>&1
 
-
 # sudo firewall-cmd --add-masquerade --permanent >/dev/null 2>&1
 # sudo firewall-cmd --reload >/dev/null 2>&1
 # sudo firewall-cmd --list-all --zone=public >/dev/null 2>&1
