@@ -6,8 +6,6 @@ echo "[TASK 11] Install Loadbalancer components allow ha-proxy in SELinux"
 sudo yum install -y keepalived > /dev/null 2>&1
 sudo yum install -y haproxy > /dev/null 2>&1
 
-sudo setsebool -P haproxy_connect_any 1
-
 cat <<EOF | sudo tee -a /etc/keepalived/check_apiserver.sh > /dev/null 2>&1
 #!/bin/sh
 
@@ -16,7 +14,7 @@ errorExit() {
   exit 1
 }
 
-curl --silent --max-time 2 --insecure https://localhost:$PORT_VIP/ -o /dev/null || errorExit "Error GET https://localhost:$PORT_VIP/"
+curl --silent --max-time 2 --insecure https://localhost:6443/ -o /dev/null || errorExit "Error GET https://localhost:6443/"
 if ip addr | grep -q $IP_VIP; then
   curl --silent --max-time 2 --insecure https://$IP_VIP:$PORT_VIP/ -o /dev/null || errorExit "Error GET https://$IP_VIP:$PORT_VIP/"
 fi
@@ -45,7 +43,7 @@ vrrp_instance VI_1 {
     advert_int 5
     authentication {
         auth_type PASS
-        auth_pass mysecret
+        auth_pass mysecret_master
     }
     virtual_ipaddress {
         $IP_VIP
@@ -148,8 +146,6 @@ sudo systemctl enable keepalived >/dev/null 2>&1
 systemctl start haproxy >/dev/null 2>&1
 sudo systemctl enable haproxy >/dev/null 2>&1
 
-sudo systemctl status keepalived haproxy >/dev/null 2>&1
-
-
+sudo systemctl restart keepalived haproxy >/dev/null 2>&1
 
 

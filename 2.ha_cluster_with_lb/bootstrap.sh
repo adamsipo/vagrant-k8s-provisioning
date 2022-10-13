@@ -8,8 +8,21 @@
 
 echo "[TASK 1] Install packages and turn on firewall"
 sudo yum -y install epel-release >/dev/null 2>&1
-sudo yum -y install ufw nc net-tools vim >/dev/null 2>&1
-sudo ufw --force enable >/dev/null 2>&1
+sudo yum -y install ufw nc net-tools vim sshpass >/dev/null 2>&1
+
+# Optional
+
+# sudo ufw --force enable >/dev/null 2>&1 # Optional
+
+# Optional
+
+# sudo setsebool -P haproxy_connect_any 1 
+
+# Selinux settings
+sudo sed -i 's/SELINUX=enforcing/SELINUX=permissive/g' /etc/selinux/config 
+sudo setenforce 0
+sudo getenforce >/dev/null 2>&1
+
 
 echo "[TASK 2] Disable and turn off SWAP"
 # disable swap
@@ -43,6 +56,8 @@ sudo yum install -y yum-utils >/dev/null 2>&1
 sudo yum-config-manager -y --enable extras >/dev/null 2>&1
 sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo >/dev/null 2>&1
 sudo yum install -y containerd.io >/dev/null 2>&1
+
+# Optional
 # sudo yum install -y docker-ce >/dev/null
 # sudo yum install -y docker-ce-cli >/dev/null
 # sudo yum install -y docker-compose-plugin >/dev/null
@@ -81,6 +96,7 @@ sudo echo "export TERM=xterm" >> /etc/bash.bashrc >/dev/null 2>&1
 echo "[TASK 10] Update /etc/hosts file"
 sudo cat | sudo tee -a /etc/hosts >/dev/null 2>&1 <<EOF
 172.16.16.110   k8s-vip
+172.16.16.210   k8s-vip-worker
 172.16.16.101   master1.example.com    master1
 172.16.16.102   master2.example.com    master2
 172.16.16.103   master3.example.com    master3
