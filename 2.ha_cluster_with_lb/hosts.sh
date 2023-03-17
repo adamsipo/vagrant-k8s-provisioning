@@ -1,9 +1,12 @@
 #!/bin/bash
-echo "[TASK 10] Update /etc/hosts file"
+echo "[TASK 2] Update /etc/hosts file"
 
-echo "VM_IPS_ARRAY: $VM_IPS"
+IFS=',' read -ra VM_IPS_ARRAY <<< "$IP_MASTER_LIST"
+for i in "${VM_IPS_ARRAY[@]}"; do
+  echo "$i" >> /etc/hosts
+done
 
-IFS=',' read -ra VM_IPS_ARRAY <<< "$VM_IPS"
+IFS=',' read -ra VM_IPS_ARRAY <<< "$IP_WORKER_LIST"
 for i in "${VM_IPS_ARRAY[@]}"; do
   echo "$i" >> /etc/hosts
 done
@@ -15,11 +18,10 @@ fi
 
 # Add entry for VAR1 if set
 if [ ! -z "$MASTER_LOAD_BALANCER_IP" ]; then
-  echo "$MASTER_LOAD_BALANCER_IP lb-master" >> /etc/hosts
+  echo "$MASTER_LOAD_BALANCER_IP $MASTER_LOAD_BALANCER_NAME" >> /etc/hosts
 fi
 
 # Add entry for VAR2 if set
 if [ ! -z "$WORKER_LOAD_BALANCER_IP" ]; then
-  echo "$WORKER_LOAD_BALANCER_IP lb-worker" >> /etc/hosts
+  echo "$WORKER_LOAD_BALANCER_IP $WORKER_LOAD_BALANCER_NAME" >> /etc/hosts
 fi
-
