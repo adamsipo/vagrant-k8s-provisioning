@@ -91,13 +91,13 @@ echo "[TASK 9] Set root password"
 sudo echo -e "kubeadmin\nkubeadmin" | passwd root >/dev/null 2>&1
 sudo echo "export TERM=xterm" >>/etc/bash.bashrc >/dev/null 2>&1
 
-echo "[TASK 10] Update /etc/hosts file"
-sudo cat | sudo tee -a /etc/hosts >/dev/null 2>&1 <<EOF
-172.16.16.110   k8s-vip
-172.16.16.210   k8s-vip-worker
-172.16.16.101   master1.example.com    master1
-172.16.16.102   master2.example.com    master2
-172.16.16.103   master3.example.com    master3
-172.16.16.201   worker1.example.com    worker1
-172.16.16.202   worker2.example.com    worker2
-EOF
+# echo "[TASK 10] Update /etc/hosts file"
+# sudo cat | sudo tee -a /etc/hosts >/dev/null 2>&1 <<EOF
+# 172.16.16.110   k8s-vip
+# 172.16.16.210   k8s-vip-worker
+# 172.16.16.101   master1.example.com    master1
+# 172.16.16.102   master2.example.com    master2
+# 172.16.16.103   master3.example.com    master3
+# 172.16.16.201   worker1.example.com    worker1
+# 172.16.16.202   worker2.example.com    worker2
+# EOF

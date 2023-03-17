@@ -1,60 +1,24 @@
 #!/bin/bash
-IP_VIP="172.16.16.110"
-PORT_VIP="10443"
 
-echo "[TASK 11] Install Loadbalancer components allow ha-proxy in SELinux"
-sudo yum install -y keepalived > /dev/null 2>&1
-sudo yum install -y haproxy > /dev/null 2>&1
+set -xv
 
-cat <<EOF | sudo tee -a /etc/keepalived/check_apiserver.sh > /dev/null 2>&1
-#!/bin/sh
-
-errorExit() {
-  echo "*** $@" 1>&2
+if [ -z "$MASTER_LOAD_BALANCER_IP" ] && [ -z "$WORKER_LOAD_BALANCER_IP" ]; then
+  echo "No environment variables set"
   exit 1
-}
-
-curl --silent --max-time 2 --insecure https://localhost:6443/ -o /dev/null || errorExit "Error GET https://localhost:6443/"
-if ip addr | grep -q $IP_VIP; then
-  curl --silent --max-time 2 --insecure https://$IP_VIP:$PORT_VIP/ -o /dev/null || errorExit "Error GET https://$IP_VIP:$PORT_VIP/"
 fi
-EOF
 
-sudo chmod +x /etc/keepalived/check_apiserver.sh
+# Add entry for VAR1 if set
+if [ ! -z "$MASTER_LOAD_BALANCER_IP" ]; then
+  IP_VIP=$MASTER_LOAD_BALANCER_IP
+fi
 
-cat <<EOF | sudo tee /etc/keepalived/keepalived.conf > /dev/null 2>&1
-global_defs {
-    router_id LVS_DEVEL
-}
-vrrp_script check_apiserver {
-  script "/etc/keepalived/check_apiserver.sh"
-  interval 3
-  timeout 10
-  fall 5
-  rise 2
-  weight -2
-}
+# Add entry for VAR2 if set
+if [ ! -z "$WORKER_LOAD_BALANCER_IP" ]; then
+  IP_VIP=$WORKER_LOAD_BALANCER_IP
+fi
 
-vrrp_instance VI_1 {
-    state BACKUP
-    interface eth1
-    virtual_router_id 1
-    priority 100
-    advert_int 5
-    authentication {
-        auth_type PASS
-        auth_pass mysecret_master
-    }
-    virtual_ipaddress {
-        $IP_VIP
-    }
-    track_script {
-        check_apiserver
-    }
-}
-EOF
-
-cat <<EOF | sudo tee /etc/haproxy/haproxy.cfg > /dev/null 2>&1
+# Write the configuration header to the file
+cat <<EOF | sudo tee haproxy.cfg > /dev/null 2>&1
 #---------------------------------------------------------------------
 # Example configuration for a possible web application.  See the
 # full configuration options online.
@@ -133,17 +97,22 @@ backend kubernetes-backend
   option httpchk GET /healthz
   http-check expect status 200
   mode tcp
-  option ssl-hello-chk
   balance roundrobin
-    server master1 172.16.16.101:6443 check
-    server master2 172.16.16.102:6443 check
-    server master3 172.16.16.103:6443 check
+    server master1 172.16.16.201:30100 check
+    server worker2 172.16.16.202:30100 check
 EOF
 
-systemctl start keepalived >/dev/null 2>&1
-sudo systemctl enable keepalived >/dev/null 2>&1
+IFS=','
+# Loop over the array and generate the output
+for vm_ips in $VM_IPS
+do
+  # Split the array element into separate variables
+  IFS=' ' read -ra arr <<< "$vm_ips"
+  ip="${arr[0]}"
+  name="${arr[1]}"
+  hostname="${arr[2]}"
+  
+sudo sed -i "/balance roundrobin/{:a;N;/check$/!ba;s/.*/    server $name $ip:30100 check/}" haproxy.cfg
 
-systemctl start haproxy >/dev/null 2>&1
-sudo systemctl enable haproxy >/dev/null 2>&1
+done
 
-sudo systemctl restart keepalived haproxy >/dev/null 2>&1
