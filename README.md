@@ -4,28 +4,20 @@ This Vagrantfile sets up a Kubernetes cluster with master and worker nodes using
 
 ## Prerequisites
 
-- Vagrant
-- VirtualBox
+- Install [Vagrant](https://www.vagrantup.com/downloads.html)
+- Install [VirtualBox](https://www.virtualbox.org/wiki/Downloads)
 
-### Installing Vagrant
+## Installation
 
-Follow the instructions for your operating system to install Vagrant:
+### Vagrant
 
-#### Windows / macOS
+1. Download and install Vagrant from the [official website](https://www.vagrantup.com/downloads.html).
+2. Follow the installation instructions for your operating system.
 
-Download the appropriate installer for your OS from the [Vagrant downloads page](https://www.vagrantup.com/downloads) and run the installer.
+### VirtualBox
 
-#### Linux
-
-You can use the package manager of your Linux distribution to install Vagrant, or you can download the appropriate package from the [Vagrant downloads page](https://www.vagrantup.com/downloads) and install it using the package manager.
-
-### Installing VirtualBox
-
-Follow the instructions for your operating system to install VirtualBox:
-
-#### Windows / macOS / Linux
-
-Download the appropriate installer for your OS from the [VirtualBox downloads page](https://www.virtualbox.org/wiki/Downloads) and run the installer.
+1. Download and install VirtualBox from the [official website](https://www.virtualbox.org/wiki/Downloads).
+2. Follow the installation instructions for your operating system.
 
 ## Configuration
 
@@ -67,4 +59,10 @@ The Vagrantfile provisions the nodes with the following shell scripts:
 
 ## How to Run
 
-1. Place the Vagrantfile and the provisioning scripts (`env.sh`, `bootstrap.sh`, `lb_setup.sh`, `install-kubernetes.sh`) in
+1. Save the provided Vagrantfile to a new directory on your local machine.
+2. Open a terminal or command prompt and navigate to the directory containing the Vagrantfile.
+3. Run the following command to start the virtual machines and provision the Kubernetes cluster:
+
+    ```vagrant up```
+
+4. Wait for the provisioning process to complete. This may take some time, depending on your
