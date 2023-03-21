@@ -6,9 +6,11 @@
 ## If you use a different version of Centos test this again
 #
 
-echo "[TASK 3] Install packages and turn on firewall"
+echo "[TASK 3] Install packages and turn off firewall"
 sudo yum -y install epel-release >/dev/null 2>&1
 sudo yum -y install ufw nc net-tools vim sshpass >/dev/null 2>&1
+systemctl disable --now ufw
+sudo systemctl disable firewalld
 
 # Optional
 
@@ -19,7 +21,7 @@ sudo yum -y install ufw nc net-tools vim sshpass >/dev/null 2>&1
 # sudo setsebool -P haproxy_connect_any 1
 
 # Selinux settings
-sudo sed -i 's/SELINUX=enforcing/SELINUX=permissive/g' /etc/selinux/config
+sudo sed -i 's/SELINUX=enforcing/SELINUX=disable/g' /etc/selinux/config
 sudo setenforce 0
 sudo getenforce >/dev/null 2>&1
 

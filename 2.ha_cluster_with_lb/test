@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# Initialize the Kubernetes control plane
+sudo kubeadm init --upload-certs | tee kubeadm-init.log
+
+# Extract the token and hash from the kubeadm init log file
+KUBEADM_INIT_LOG="kubeadm-init.log"
+KUBEADM_JOIN_COMMAND=$(grep "kubeadm join" $KUBEADM_INIT_LOG)
+KUBEADM_TOKEN=$(grep "discovery-token-ca-cert-hash" $KUBEADM_INIT_LOG | awk '{print $NF}')
+KUBEADM_HASH=$(grep "discovery-token-ca-cert-hash" $KUBEADM_INIT_LOG | awk '{print $(NF-1)}')
+
+# Output the join command with the token and hash
+echo "Join command:"
+echo "$KUBEADM_JOIN_COMMAND --discovery-token-ca-cert-hash $KUBEADM_HASH"
+echo ""
+echo "Token:"
+echo "$KUBEADM_TOKEN"
+
+
+
+IP_MASTER_LIST
+
+
+# Loop over the array and generate the output
+for vm_ips in $IP_MASTER_LIST
+do
+  # Split the array element into separate variables
+  IFS=' ' read -ra arr <<< "$vm_ips"
+  ip="${arr[0]}"
+  name="${arr[1]}"
+  hostname="${arr[2]}"
+
+  # Add config lines to haprox.cfg
+  sudo sed -i "/balance roundrobin/a \    server $name $ip:$PORT check fall 3 rise 2" "/etc/haproxy/haproxy.cfg"
+done
