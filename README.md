@@ -65,4 +65,4 @@ The Vagrantfile provisions the nodes with the following shell scripts:
 
     ```vagrant up```
 
-4. Wait for the provisioning process to complete. This may take some time, depending on your
+4. Wait for the provisioning process to complete. This may take some time, depending on your computer
