@@ -1,3 +1,50 @@
+package main
+
+import (
+	"fmt"
+	"html/template"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strconv"
+	"strings"
+)
+
+const indexHTML = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kubernetes Vagrant Setup</title>
+</head>
+<body>
+  <h1>Kubernetes Vagrant Setup</h1>
+  <form action="/" method="post">
+    <label for="masterNodes">Master Nodes:</label>
+    <input type="number" id="masterNodes" name="masterNodes" value="1" min="1"><br><br>
+
+    <label for="workerNodes">Worker Nodes:</label>
+    <input type="number" id="workerNodes" name="workerNodes" value="1" min="1"><br><br>
+
+    <label for="ipRange">IP Range:</label>
+    <input type="text" id="ipRange" name="ipRange" value="172.16.16."><br><br>
+
+    <label for="masterLbIp">Master Load Balancer IP:</label>
+    <input type="text" id="masterLbIp" name="masterLbIp" value="172.16.16.210"><br><br>
+
+    <label for="workerLbIp">Worker Load Balancer IP:</label>
+    <input type="text" id="workerLbIp" name="workerLbIp" value="172.16.16.220"><br><br>
+
+    <input type="submit" value="Run Vagrant">
+  </form>
+</body>
+</html>
+`
+
+const vagrantFileTemplate = `
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
@@ -104,3 +151,61 @@ Vagrant.configure(2) do |config|
     end
   end
 end
+`
+
+func main() {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			masterNodes, _ := strconv.Atoi(r.FormValue("masterNodes"))
+			workerNodes, _ := strconv.Atoi(r.FormValue("workerNodes"))
+			ipRange := r.FormValue("ipRange")
+			masterLbIp := r.FormValue("masterLbIp")
+			workerLbIp := r.FormValue("workerLbIp")
+
+			updatedVagrantfile := vagrantFileTemplate
+			updatedVagrantfile = replace(updatedVagrantfile, "MASTER_NODES_COUNT = 1", fmt.Sprintf("MASTER_NODES_COUNT = %d", masterNodes))
+			updatedVagrantfile = replace(updatedVagrantfile, "WORKER_NODES_COUNT = 1", fmt.Sprintf("WORKER_NODES_COUNT = %d", workerNodes))
+			updatedVagrantfile = replace(updatedVagrantfile, "IP_RANGE = \"172.16.16.\"", fmt.Sprintf("IP_RANGE = \"%s\"", ipRange))
+			updatedVagrantfile = replace(updatedVagrantfile, "MASTER_LOAD_BALANCER_IP = \"#{IP_RANGE}#{210}\"", fmt.Sprintf("MASTER_LOAD_BALANCER_IP = \"%s\"", masterLbIp))
+			updatedVagrantfile = replace(updatedVagrantfile, "WORKER_LOAD_BALANCER_IP = \"#{IP_RANGE}#{220}\"", fmt.Sprintf("WORKER_LOAD_BALANCER_IP = \"%s\"", workerLbIp))
+
+			dir := filepath.Join("/tmp", "vagrant")
+			err := os.MkdirAll(dir, 0755)
+			
+			
+				if err != nil {
+					http.Error(w, "Failed to create Vagrant directory", http.StatusInternalServerError)
+					return
+				}
+	
+				err = ioutil.WriteFile(filepath.Join(dir, "Vagrantfile"), []byte(updatedVagrantfile), 0644)
+				if err != nil {
+					http.Error(w, "Failed to write Vagrantfile", http.StatusInternalServerError)
+					return
+				}
+
+				cmd := exec.Command("vagrant", "up")
+				cmd.Dir = dir
+				output, err := cmd.CombinedOutput()
+				if err != nil {
+					http.Error(w, "Failed to run Vagrant up", http.StatusInternalServerError)
+					return
+				}
+				
+				w.Write([]byte("Vagrant up executed successfully.\n\nOutput:\n"))
+				w.Write(output)	
+
+				w.Write([]byte("Vagrant up executed successfully."))
+			} else {
+				tmpl, _ := template.New("index").Parse(indexHTML)
+				tmpl.Execute(w, nil)
+			}
+		})
+	
+		http.ListenAndServe(":8080", nil)
+	}
+	
+	func replace(src, oldValue, newValue string) string {
+		return strings.Replace(src, oldValue, newValue, -1)
+	}
+	

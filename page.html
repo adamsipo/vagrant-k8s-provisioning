@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kubernetes Vagrant Setup</title>
+</head>
+<body>
+  <h1>Kubernetes Vagrant Setup</h1>
+  <form id="vagrantForm">
+    <label for="masterNodes">Master Nodes:</label>
+    <input type="number" id="masterNodes" name="masterNodes" value="1" min="1"><br><br>
+
+    <label for="workerNodes">Worker Nodes:</label>
+    <input type="number" id="workerNodes" name="workerNodes" value="1" min="1"><br><br>
+
+    <label for="ipRange">IP Range:</label>
+    <input type="text" id="ipRange" name="ipRange" value="172.16.16."><br><br>
+
+    <label for="masterLbIp">Master Load Balancer IP:</label>
+    <input type="text" id="masterLbIp" name="masterLbIp" value="172.16.16.210"><br><br>
+
+    <label for="workerLbIp">Worker Load Balancer IP:</label>
+    <input type="text" id="workerLbIp" name="workerLbIp" value="172.16.16.220"><br><br>
+
+    <button type="button" onclick="generateVagrantfile()">Generate Vagrantfile</button>
+  </form>
+
+  <h2>Generated Vagrantfile:</h2>
+  <textarea id="generatedVagrantfile" rows="30" cols="80" readonly></textarea>
+
+  <script>
+    function generateVagrantfile() {
+      const masterNodes = document.getElementById("masterNodes").value;
+      const workerNodes = document.getElementById("workerNodes").value;
+      const ipRange = document.getElementById("ipRange").value;
+      const masterLbIp = document.getElementById("masterLbIp").value;
+      const workerLbIp = document.getElementById("workerLbIp").value;
+
+      const vagrantFileTemplate = `
+      ... Your Vagrantfile content here ...
+      `;
+
+      const updatedVagrantfile = vagrantFileTemplate
+        .replace("MASTER_NODES_COUNT = 1", `MASTER_NODES_COUNT = ${masterNodes}`)
+        .replace("WORKER_NODES_COUNT = 1", `WORKER_NODES_COUNT = ${workerNodes}`)
+        .replace("IP_RANGE = \"172.16.16.\"", `IP_RANGE = "${ipRange}"`)
+        .replace("MASTER_LOAD_BALANCER_IP = \"#{IP_RANGE}#{210}\"", `MASTER_LOAD_BALANCER_IP = "${masterLbIp}"`)
+        .replace("WORKER_LOAD_BALANCER_IP = \"#{IP_RANGE}#{220}\"", `WORKER_LOAD_BALANCER_IP = "${workerLbIp}"`);
+
+      document.getElementById("generatedVagrantfile").value = updatedVagrantfile;
+    }
+  </script>
+</body>
+</html>

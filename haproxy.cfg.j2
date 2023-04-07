@@ -1,0 +1,54 @@
+#---------------------------------------------------------------------
+# Global settings
+#---------------------------------------------------------------------
+global
+    log         127.0.0.1 local2
+    chroot      /var/lib/haproxy
+    pidfile     /var/run/haproxy.pid
+    maxconn     4000
+    user        haproxy
+    group       haproxy
+    daemon
+    stats socket /var/lib/haproxy/stats
+
+#---------------------------------------------------------------------
+# common defaults that all the 'listen' and 'backend' sections will
+# use if not designated in their block
+#---------------------------------------------------------------------
+defaults
+    log                     global
+    mode                    tcp
+    option                  tcplog
+    option                  dontlognull
+    retries                 3
+    timeout connect         10s
+    timeout client          1m
+    timeout server          1m
+    maxconn                 3000
+
+# Stats page configuration
+listen stats
+    bind *:9000
+    mode http
+    stats enable
+    stats hide-version
+    stats realm Haproxy\ Statistics
+    stats uri /stats
+    stats auth admin:admin
+
+# Frontend configuration
+frontend kubernetes-frontend
+    bind *:{{ port_vip }}
+    mode tcp
+    default_backend kubernetes-backend
+
+# Backend configuration
+backend kubernetes-backend
+    mode tcp
+    option tcp-check
+    option ssl-hello-chk
+    balance roundrobin
+{% for vm_ips in vm_ips.split(',') %}
+{%   set arr = vm_ips.split() %}
+    server {{ arr[1] }} {{ arr[0] }}:{{ port }} check
+{% endfor %}
