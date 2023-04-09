@@ -1,0 +1,184 @@
+---
+- name: Setup Kubernetes prerequisites
+  hosts: all
+  become: yes
+  gather_facts: no
+
+  tasks:
+    - name: Display all variables
+      debug:
+        var: hostvars[inventory_hostname]
+      register: var_output
+
+    - name: Set output as fact
+      set_fact:
+        output_content: "{{ var_output | to_nice_json }}"
+
+    - name: Save variable output to file
+      copy:
+        content: "{{ output_content }}"
+        dest: /tmp/ansible-variables
+
+    - name: Install required packages
+      become: yes
+      ansible.builtin.yum:
+        name:
+          - epel-release
+          - nc
+          - net-tools
+          - vim
+          - sshpass
+          - ca-certificates
+        state: present
+
+    - name: Disable firewalld
+      ansible.builtin.systemd:
+        name: firewalld
+        state: stopped
+        enabled: no
+
+    - name: Disable SELinux
+      ansible.builtin.selinux:
+        policy: targeted
+        state: disabled
+
+    - name: Disable SWAP
+      ansible.builtin.command:
+        cmd: swapoff -a
+
+    - name: Remove swap partition settings in /etc/fstab
+      ansible.builtin.lineinfile:
+        path: /etc/fstab
+        regexp: 'swap'
+        state: absent
+
+    - name: Install required kernel modules
+      ansible.builtin.package:
+        name:
+          - kernel-modules
+        state: present
+
+    - name: Load br_netfilter kernel module
+      ansible.builtin.modprobe:
+        name: br_netfilter
+        state: present
+
+    - name: Load br_netfilter kernel module
+      ansible.builtin.modprobe:
+        name: overlay
+        state: present        
+
+    - name: Add Kernel settings
+      ansible.posix.sysctl:
+        name: "{{ item.name }}"
+        value: "{{ item.value }}"
+        state: present
+        reload: yes
+      loop:
+        - { name: 'net.bridge.bridge-nf-call-iptables', value: '1' }
+        - { name: 'net.bridge.bridge-nf-call-ip6tables', value: '1' }
+        - { name: 'net.ipv4.ip_forward', value: '1' }
+
+    - name: Run sudo sysctl --system
+      become: true
+      ansible.builtin.command:
+        cmd: sysctl --system
+
+        
+    - name: Add Docker CE repository
+      ansible.builtin.yum_repository:
+        name: docker-ce
+        description: Docker CE Repository
+        baseurl: https://download.docker.com/linux/centos/7/x86_64/stable/
+        gpgkey: https://download.docker.com/linux/centos/gpg
+        enabled: yes
+        gpgcheck: yes
+      become: true
+
+    - name: Install containerd runtime and configure repository
+      ansible.builtin.yum:
+        name: "{{ packages }}"
+        state: present
+        enablerepo: extras, docker-ce-stable
+      vars:
+        packages:
+          - yum-utils
+          - containerd.io
+      become: true
+
+    - name: Configure containerd
+      become: true
+      block:
+        - name: Create containerd configuration directory
+          ansible.builtin.file:
+            path: /etc/containerd
+            state: directory
+
+        - name: Write containerd config to file
+          ansible.builtin.shell: "sudo sh -c 'containerd config default | tee /etc/containerd/config.toml >/dev/null'"  
+
+        - name: Update containerd configuration
+          ansible.builtin.lineinfile:
+            path: /etc/containerd/config.toml
+            regexp: 'SystemdCgroup = true'
+            line: 'SystemdCgroup = false'
+
+        - name: Restart and enable containerd
+          ansible.builtin.systemd:
+            name: containerd
+            state: restarted
+            enabled: yes
+
+    - name: Add Kubernetes repository
+      ansible.builtin.yum_repository:
+        name: kubernetes
+        description: Kubernetes
+        baseurl: https://packages.cloud.google.com/yum/repos/kubernetes-el7-\$basearch
+        enabled: yes
+        gpgcheck: yes
+        gpgkey: https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+
+    - name: Install Kubernetes components (kubeadm, kubelet and kubectl)
+      ansible.builtin.yum:
+        name:
+          - kubeadm-1.25.0-0.x86_64
+          - kubelet-1.25.0-0.x86_64
+          - kubectl-1.25.0-0.x86_64
+        state: present
+
+    - name: Enable and start kubelet service
+      ansible.builtin.systemd:
+        name: kubelet
+        state: started
+        enabled: yes
+
+    - name: Enable SSH password authentication and permit root login
+      block:
+        - name: Enable SSH password authentication
+          ansible.builtin.lineinfile:
+            path: /etc/ssh/sshd_config
+            regexp: '^PasswordAuthentication .*'
+            line: 'PasswordAuthentication yes'
+
+        - name: Permit root login
+          ansible.builtin.lineinfile:
+            path: /etc/ssh/sshd_config
+            regexp: '^PermitRootLogin .*'
+            line: 'PermitRootLogin yes'
+          notify: Reload SSH
+
+    - name: Set root password
+      ansible.builtin.user:
+        name: root
+        password: "{{ 'kubeadmin' | password_hash('sha512') }}"
+
+    - name: Add export TERM=xterm to /etc/bash.bashrc
+      ansible.builtin.lineinfile:
+        path: ~/.bashrc
+        line: 'export TERM=xterm'
+
+  handlers:
+    - name: Reload SSH
+      ansible.builtin.systemd:
+        name: sshd
+        state: reloaded

@@ -1,9 +1,8 @@
 global_defs {
     router_id LVS_DEVEL
 }
-
 vrrp_script check_apiserver {
-  script "{{ check_apiserver_script_path }}"
+  script "/etc/keepalived/check_apiserver.sh"
   interval 2
   timeout 3
   fall 5
@@ -19,7 +18,7 @@ vrrp_instance VI_1 {
     advert_int 5
     authentication {
         auth_type PASS
-        auth_pass {{ auth_pass }}
+        auth_pass mysecret
     }
     virtual_ipaddress {
         {{ ip_vip }}

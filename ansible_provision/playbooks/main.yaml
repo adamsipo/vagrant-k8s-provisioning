@@ -1,0 +1,10 @@
+---
+- name: Main Playbook
+  hosts: all
+  become: yes
+  no_log: true
+- import_playbook: env.yaml
+- import_playbook: bootstrap.yaml
+- import_playbook: loadbalancers.yaml
+- import_playbook: install_kubernetes.yaml
+

@@ -1,0 +1,71 @@
+---
+- name: Install Loadbalancer components and configure keepalived and haproxy
+  hosts: all
+  become: yes
+  gather_facts: no
+
+  tasks:
+    - name: Set hostname variable
+      set_fact:
+        hostname: "{{ inventory_hostname }}"
+      when: hostname is not defined
+      
+    - name: Set variables based on hostname
+      set_fact:
+        hostname: "{{ inventory_hostname }}"
+        vm_ips: "{{ (hostname | regex_search('master')) | ternary(ip_master_list, ip_worker_list) }}"
+        ip_vip: "{{ (hostname | regex_search('master')) | ternary(master_load_balancer_ip, worker_load_balancer_ip) }}"
+        virtual_router_id: "{{ (hostname | regex_search('master')) | ternary(1, 2) }}"
+        port: "{{ (hostname | regex_search('master')) | ternary(6443, 30100) }}"
+        port_vip: 10443
+      when: hostname | regex_search('master|worker')
+
+    - name: Install keepalived and haproxy
+      ansible.builtin.package:
+        name:
+          - keepalived
+          - haproxy
+        state: present
+
+    - name: Create check_apiserver script
+      template:
+        src: ../templates/check_apiserver.sh.j2
+        dest: /etc/keepalived/check_apiserver.sh
+        mode: 0755
+
+    - name: Configure haproxy.cfg
+      template:
+        src: ../templates/haproxy.cfg.j2
+        dest: /etc/haproxy/haproxy.cfg
+        mode: 0644
+
+    - name: Configure keepalived.conf
+      template:
+        src: ../templates/keepalived.conf.j2
+        dest: /etc/keepalived/keepalived.conf
+        mode: 0644
+
+    - name: Enable and start keepalived and haproxy services
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: restarted
+        enabled: yes
+      loop:
+        - keepalived
+        - haproxy
+
+    - name: Check keepalived and haproxy status
+      ansible.builtin.command:
+        cmd: systemctl status {{ item }}
+      register: result
+      loop:
+        - keepalived
+        - haproxy
+      changed_when: False
+      ignore_errors: True
+
+    - name: Display keepalived and haproxy status
+      ansible.builtin.debug:
+        var: item.stdout_lines
+      loop: "{{ result.results }}"
+      when: item.rc != 0

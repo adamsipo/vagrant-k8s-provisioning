@@ -38,7 +38,7 @@ listen stats
 
 # Frontend configuration
 frontend kubernetes-frontend
-    bind *:{{ port_vip }}
+    bind *:10443
     mode tcp
     default_backend kubernetes-backend
 
@@ -48,7 +48,7 @@ backend kubernetes-backend
     option tcp-check
     option ssl-hello-chk
     balance roundrobin
-{% for vm_ips in vm_ips.split(',') %}
-{%   set arr = vm_ips.split() %}
-    server {{ arr[1] }} {{ arr[0] }}:{{ port }} check
+{% for vm_ip in vm_ips.split(',') %}
+{%   set arr = vm_ip.split() %}
+    server {{ arr[2] }} {{ arr[0] }}:{{ port }} check
 {% endfor %}

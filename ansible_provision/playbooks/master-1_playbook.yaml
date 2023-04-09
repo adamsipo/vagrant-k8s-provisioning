@@ -1,0 +1,16 @@
+- name: Initialize Kubernetes Cluster
+  hosts: all
+  become: yes
+
+  tasks:
+    - name: Execute master-1 playbook
+      import_playbook: master-1_playbook.yaml
+      when: "'master-1' in inventory_hostname"
+
+    - name: Execute control plane playbook
+      import_playbook: control_plane_playbook.yaml
+      when: "'master-' in inventory_hostname and 'master-1' not in inventory_hostname"
+
+    - name: Execute worker playbook
+      import_playbook: worker_playbook.yaml
+      when: "'worker' in inventory_hostname"
