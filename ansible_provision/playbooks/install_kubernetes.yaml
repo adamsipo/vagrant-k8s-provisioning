@@ -84,7 +84,7 @@
       when: "'master-1' in inventory_hostname"
       block:
         - name: Get token and certificate hash
-          ansible.builtin.shell: kubeadm token create --print-join-command
+          ansible.builtin.shell: kubeadm token create --print-join-command --ttl 2days
           register: worker_join_output
           changed_when: False
           run_once: true
