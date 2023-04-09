@@ -1,34 +1,14 @@
 ---
 - name: Initialize Kubernetes Cluster
   hosts: all
-  become: yes
-  gather_facts: no
+  become: true
+  gather_facts: false
 
   vars:
     master_load_balancer_name: lb-master
     master_node_name: "{{ hostvars[groups['master'][0]]['inventory_hostname_short'] }}"
 
   tasks:
-
-    - name: Create .ssh directory
-      ansible.builtin.file:
-        path: /root/.ssh
-        state: directory
-        mode: '0700'
-
-    - name: Generate SSH key
-      ansible.builtin.openssh_keypair:
-        path: ~/.ssh/id_rsa
-        force: no
-
-    - name: Install public key on remote host
-      ansible.builtin.copy:
-        src: ~/.ssh/id_rsa.pub
-        dest: /root/.ssh/authorized_keys
-        mode: '0600'
-      with_items: "{{ groups['all'] }}"
-      when: inventory_hostname != item
-
     - name: Check if control plane is already initialized
       when: "'master-1' in inventory_hostname"
       ansible.builtin.stat:
@@ -36,14 +16,16 @@
       register: control_plane_initialized
 
     - name: Initialize control plane on master-1
-      when: "'master-1' in inventory_hostname and not control_plane_initialized.stat.exists"
+      when:
+        - "'master-1' in inventory_hostname"
+        - "not control_plane_initialized.stat.exists"
       ansible.builtin.command: >
         kubeadm init
         --control-plane-endpoint={{ master_load_balancer_name }}:10443
         --upload-certs
         --apiserver-advertise-address={{ ip_master_list.split()[0] }}
         --pod-network-cidr=192.168.0.0/16
-      run_once: true
+      changed_when: false
 
     - name: Deploy Calico network
       when: "'master-1' in inventory_hostname"
@@ -52,7 +34,7 @@
           ansible.builtin.uri:
             url: https://docs.projectcalico.org/v3.25/manifests/calico.yaml
             method: HEAD
-            validate_certs: no
+            validate_certs: false
           register: calico_yaml_status
           changed_when: false
 
@@ -86,7 +68,7 @@
         - name: Get token and certificate hash
           ansible.builtin.shell: kubeadm token create --print-join-command --ttl 24h
           register: worker_join_output
-          changed_when: False
+          changed_when: false
           run_once: true
 
         - name: Set join command for worker nodes
@@ -147,7 +129,7 @@
       when: "'master-' in inventory_hostname and 'master-1' not in inventory_hostname"
       block:
         - name: Copy joincluster.sh from master node
-          become: yes
+          become: true
           ansible.builtin.shell:
             cmd: |
               sshpass -p "kubeadmin" scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no master-1:/controlplane.sh /controlplane.sh
@@ -157,7 +139,7 @@
           changed_when: false
           register: join_output
 
-        - name: Display join output
+        - name: Display join output yes
           ansible.builtin.debug:
             var: join_output.stdout
 
@@ -165,13 +147,13 @@
       when: "'worker' in inventory_hostname"
       block:
         - name: Copy joincluster.sh from master node
-          become: yes
+          become: true
           ansible.builtin.shell:
             cmd: |
               sshpass -p "kubeadmin" scp -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no master-1:/joincluster.sh /joincluster.sh
 
         - name: Join worker node to cluster
-          become: yes
+          become: true
           ansible.builtin.shell: "/joincluster.sh >/dev/null 2>&1"
           changed_when: false
           register: join_output
@@ -184,7 +166,7 @@
       when: "'master-' in inventory_hostname"
       block:
         - name: Set Kubernetes config
-          become: yes
+          become: true
           file:
             path: "{{ item }}/.kube"
             state: directory
@@ -193,7 +175,7 @@
             - "/home/vagrant"
 
         - name: Copy Kubernetes config
-          become: yes
+          become: true
           copy:
             src: /etc/kubernetes/admin.conf
             dest: "{{ item }}/.kube/config"
@@ -204,7 +186,7 @@
             - "/home/vagrant"
 
         - name: Set ownership on Kubernetes config
-          become: yes
+          become: true
           file:
             path: "{{ item }}/.kube/config"
             owner: "{{ item_username }}"

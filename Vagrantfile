@@ -15,7 +15,7 @@ MEMORY_MASTER_NODE = 2048
 MEMORY_WORKER_NODE = 1024
 
 MASTER_NODES_COUNT = 2
-WORKER_NODES_COUNT = 2
+WORKER_NODES_COUNT = 1
 
 CLUSTER_NAME = "k8s-3"
 
@@ -75,7 +75,6 @@ Vagrant.configure(2) do |config|
           master_node_name: MASTER_NODE_NAME,
           worker_node_name: WORKER_NODE_NAME
         }
-        ansible.verbose = "vv"
       end
     end
   end
