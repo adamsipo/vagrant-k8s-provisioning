@@ -29,7 +29,19 @@
           - vim
           - sshpass
           - ca-certificates
+          - bash-completion
         state: present
+
+    - name: Add Bash completion to user's .bashrc
+      lineinfile:
+        dest: "{{ item.home }}/.bashrc"
+        line: "source /usr/share/bash-completion/bash_completion"
+        owner: "{{ item.name }}"
+        group: "{{ item.name }}"
+        mode: '0644'
+      loop:
+        - { name: vagrant, home: /home/vagrant }
+        - { name: root, home: /root }
 
     - name: Disable firewalld
       ansible.builtin.systemd:

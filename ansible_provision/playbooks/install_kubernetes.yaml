@@ -56,29 +56,29 @@
           register: calico_yaml_status
           changed_when: false
 
-        # - name: Apply Calico network configuration
-        #   become: true
-        #   when: calico_yaml_status.status == 200
-        #   ansible.builtin.shell: >
-        #     kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f https://docs.projectcalico.org/v3.25/manifests/calico.yaml
-        #   environment:
-        #     KUBECONFIG: /etc/kubernetes/admin.conf
-        #   args:
-        #     executable: /bin/bash
-        #   register: calico_apply_result
-        #   changed_when: "'created' in calico_apply_result.stdout or 'configured' in calico_apply_result.stdout"
+        - name: Apply Calico network configuration
+          become: true
+          when: calico_yaml_status.status == 200
+          ansible.builtin.shell: >
+            kubectl --kubeconfig=/etc/kubernetes/admin.conf apply -f https://docs.projectcalico.org/v3.25/manifests/calico.yaml
+          environment:
+            KUBECONFIG: /etc/kubernetes/admin.conf
+          args:
+            executable: /bin/bash
+          register: calico_apply_result
+          changed_when: "'created' in calico_apply_result.stdout or 'configured' in calico_apply_result.stdout"
 
-        # - name: Check if calicoctl exists
-        #   ansible.builtin.stat:
-        #     path: /usr/local/bin/calicoctl
-        #   register: calicoctl_stat
+        - name: Check if calicoctl exists
+          ansible.builtin.stat:
+            path: /usr/local/bin/calicoctl
+          register: calicoctl_stat
 
-        # - name: Install calicoctl
-        #   when: "'master-1' in inventory_hostname and not calicoctl_stat.stat.exists"
-        #   ansible.builtin.get_url:
-        #     url: "https://github.com/projectcalico/calico/releases/download/v3.24.1/calicoctl-linux-amd64"
-        #     dest: /usr/local/bin/calicoctl
-        #     mode: "u+x"
+        - name: Install calicoctl
+          when: "'master-1' in inventory_hostname and not calicoctl_stat.stat.exists"
+          ansible.builtin.get_url:
+            url: "https://github.com/projectcalico/calico/releases/download/v3.24.1/calicoctl-linux-amd64"
+            dest: /usr/local/bin/calicoctl
+            mode: "u+x"
 
     - name: Generate join command for worker nodes
       when: "'master-1' in inventory_hostname"
