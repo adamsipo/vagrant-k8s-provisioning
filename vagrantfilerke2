@@ -1,0 +1,64 @@
+Vagrant.configure("2") do |config|
+
+    # Variables
+    numNodes = 3
+    boxName = "generic/ubuntu2204"
+    IP_RANGE = "192.168.50."
+    MEMORY_MASTER_NODE = 2048
+    CPUS_MASTER_NODE = 2
+    CLUSTER_NAME = "MyCluster"
+    SSH_PRIVATE_KEY_PATH = "vagrant"
+    SSH_PUBLIC_KEY_PATH = "vagrant.pub"
+    
+    # Master Nodes
+    (1..numNodes).each do |i|
+      config.vm.define "node#{i}" do |masternode|
+    
+        # Define specific configurations
+        masternode.vm.box = boxName
+        masternode.vm.box_check_update = false
+        masternode.vm.hostname = "node#{i}"
+        masternode.vm.network "private_network", ip: "#{IP_RANGE}#{100 + i}"
+    
+        masternode.vm.provider :virtualbox do |v|
+          v.name = "node#{i}"
+          v.memory = MEMORY_MASTER_NODE
+          v.cpus = CPUS_MASTER_NODE
+          v.customize ["modifyvm", :id, "--groups", "/#{CLUSTER_NAME}"]
+        end
+    
+        # Copy the SSH key pair from the host machine
+        masternode.vm.provision "file", source: SSH_PRIVATE_KEY_PATH, destination: "/home/vagrant/.ssh/id_rsa"
+        masternode.vm.provision "file", source: SSH_PUBLIC_KEY_PATH, destination: "/home/vagrant/.ssh/id_rsa.pub"
+    
+        # Set the correct permissions for the private key
+        masternode.vm.provision "shell", inline: "chmod 600 /home/vagrant/.ssh/id_rsa"
+    
+        masternode.vm.provision "shell", inline: <<-SHELL
+        # Add the public key to the authorized_keys file
+        cat /home/vagrant/.ssh/id_rsa.pub >> /home/vagrant/.ssh/authorized_keys
+      
+        # Install necessary packages
+        sudo apt update
+        sudo apt install net-tools nfs-common -y
+      
+        # Disable the ufw service
+        sudo systemctl disable --now ufw
+      
+        # Upgrade all packages
+        sudo apt upgrade -y
+      
+        # Remove unnecessary packages
+        sudo apt autoremove -y
+      SHELL
+      
+        
+
+        # Enable passwordless sudo for all users
+        masternode.vm.provision "shell", inline: <<-SHELL
+          echo "%sudo ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+        SHELL
+      end
+    end
+  end
+  
