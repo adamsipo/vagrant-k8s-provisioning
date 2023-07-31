@@ -1,0 +1,179 @@
+rhel
+
+#!/bin/bash
+
+yum install -y epel-release
+yum install -y nano curl wget git tmux jq
+yum install -y iscsi-initiator-utils 
+
+sudo systemctl stop firewalld
+sudo systemctl disable firewalld
+sudo systemctl start nftables
+sudo systemctl enable nftables
+
+# set the extra hosts.
+cat >>/etc/hosts <<EOF
+192.168.50.101 node1
+192.168.50.102 node2
+192.168.50.103 node3
+EOF
+
+cat >>/etc/sysctl.d/90-rke2.conf <<EOF
+net.ipv4.conf.all.forwarding=1
+net.ipv6.conf.all.forwarding=1
+EOF
+
+sudo yum -y install curl vim wget nftables net-tools nfs-common
+sudo systemctl start nftables
+sudo systemctl enable nftables
+sudo setenforce 0
+curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl"
+chmod +x kubectl
+sudo mv kubectl /usr/local/bin
+
+cat >>.bashrc <<EOF
+export PATH=$PATH:/var/lib/rancher/rke2/bin
+export KUBECONFIG=/etc/rancher/rke2/rke2.yaml
+EOF
+source ~/.bashrc
+
+curl -sfL https://get.rke2.io --output install.sh
+sudo INSTALL_RKE2_TYPE=server INSTALL_RKE2_VERSION=v1.25.11+rke2r1 ./install.sh
+
+sudo mkdir -p /etc/rancher/rke2/
+
+# cat << EOF > /etc/yum.repos.d/rancher-rke2-1-18-latest.repo
+# [rancher-rke2-common-latest]
+# name=Rancher RKE2 Common Latest
+# baseurl=https://rpm.rancher.io/rke2/latest/common/centos/8/noarch
+# enabled=1
+# gpgcheck=1
+# gpgkey=https://rpm.rancher.io/public.key
+
+# [rancher-rke2-1-18-latest]
+# name=Rancher RKE2 1.18 Latest
+# baseurl=https://rpm.rancher.io/rke2/latest/1.18/centos/8/x86_64
+# enabled=1
+# gpgcheck=1
+# gpgkey=https://rpm.rancher.io/public.key
+# EOF
+
+# yum -y install rke2-server
+
+
+cat >>/etc/rancher/rke2/config.yaml <<EOF
+write-kubeconfig-mode: "0644"
+tls-san:
+  - node3
+  - 192.168.50.103
+EOF
+
+# server: https://192.168.50.101:9345
+# token: my-shared-secret
+# disable-etcd: true
+
+
+
+
+# #########################################################################################
+
+
+#---------------------------------------------------------------------
+# Global settings
+#---------------------------------------------------------------------
+global
+    log         127.0.0.1 local2
+    chroot      /var/lib/haproxy
+    pidfile     /var/run/haproxy.pid
+    maxconn     4000
+    user        haproxy
+    group       haproxy
+    daemon
+    stats socket /var/lib/haproxy/stats
+
+#---------------------------------------------------------------------
+# common defaults that all the 'listen' and 'backend' sections will
+# use if not designated in their block
+#---------------------------------------------------------------------
+defaults
+    log                     global
+    mode                    tcp
+    option                  tcplog
+    option                  dontlognull
+    retries                 3
+    timeout connect         10s
+    timeout client          1m
+    timeout server          1m
+    maxconn                 3000
+
+# Stats page configuration
+listen stats
+    bind *:9000
+    mode http
+    stats enable
+    stats hide-version
+    stats realm Haproxy\ Statistics
+    stats uri /stats
+    stats auth admin:admin
+
+# Frontend configuration
+frontend kubernetes-frontend-6443
+    bind *:6443
+    mode tcp
+    default_backend kubernetes-backend-6443
+
+# Backend configuration for 6443
+backend kubernetes-backend-6443
+    mode tcp
+    option tcp-check
+    # option ssl-hello-chk
+    balance roundrobin
+    server node1 192.168.50.101:6443 check fall 3 rise 2
+    server node2 192.168.50.102:6443 check fall 3 rise 2
+
+# Frontend configuration for 9345
+frontend kubernetes-frontend-9345
+    bind *:9345
+    mode tcp
+    default_backend kubernetes-backend-9345
+
+# Backend configuration for 9345
+backend kubernetes-backend-9345
+    mode tcp
+    option tcp-check
+    # option ssl-hello-chk
+    balance roundrobin
+    server node1 192.168.50.101:9345 check fall 3 rise 2
+    server node2 192.168.50.102:9345 check fall 3 rise 2
+
+# Frontend configuration for 80
+frontend kubernetes-frontend-80
+    bind *:80
+    mode tcp
+    default_backend kubernetes-backend-80
+
+# Backend configuration for 80
+backend kubernetes-backend-80
+    mode tcp
+    option tcp-check
+    # option ssl-hello-chk
+    balance roundrobin
+    server node1 192.168.50.101:80 check fall 3 rise 2
+    server node2 192.168.50.102:80 check fall 3 rise 2
+
+
+# Frontend configuration for 443
+frontend kubernetes-frontend-443
+    bind *:443
+    mode tcp
+    default_backend kubernetes-backend-443
+
+# Backend configuration for 443
+backend kubernetes-backend-443
+    mode tcp
+    option tcp-check
+    # option ssl-hello-chk
+    balance roundrobin
+    server node1 192.168.50.101:443 check fall 3 rise 2
+    server node2 192.168.50.102:443 check fall 3 rise 2
+
